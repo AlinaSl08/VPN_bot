@@ -4,14 +4,13 @@ from database.db import database
 def subscription_kb(mode_key=1, trial_used=True):
     modes = {1: 'user', 2: 'admin'}
     mode = modes[mode_key]
-    kb = InlineKeyboardBuilder() #потом сюда прайс из бд подставить
+    kb = InlineKeyboardBuilder()
     tariffs_list = database.get_all_tariffs()
-    tariffs = {tariff_id: (name, price, duration_day) for tariff_id, name, price, duration_day, _ in tariffs_list}
-    icons = {7: '⚡', 30: '📅', 182: '🔥', 365: '👑'}
+    tariffs = {tariff_id: (name, price, duration_day, is_status) for tariff_id, name, price, duration_day, is_status in tariffs_list}
     for key, item in tariffs.items():
-        name, price, days = item
-        icon = icons.get(days, "🔹")
-        kb.button(text=f'{icon} Тариф {name} ({price}₽)', callback_data=f'buy_{key}')
+        name, price, days, is_status = item
+        if is_status:
+            kb.button(text=f'💎 Тариф {name} ({price}₽)', callback_data=f'buy_{key}')
     if trial_used:
         kb.button(text='🎁 Пробный бесплатный тариф 7 дней', callback_data='free_tariff') #тут делаем проверку использовал или нет, если нет, то кнопка есть
     if mode == 'admin':

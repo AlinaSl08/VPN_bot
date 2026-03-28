@@ -25,15 +25,16 @@ async def subscription(call: CallbackQuery, state: FSMContext):
     user_id = database.get_user_id(tg_id)
     trial_used = database.is_exist_trial(user_id)
     admins = [admin[1] for admin in database.get_all_admins()]
-    if tg_id in admins: #является ли юзер админом
-        mode_key = 2
-    else:
-        mode_key = 1
+    mode_key = 2 if tg_id in admins else 1
+    tariffs_list = database.get_all_tariffs()
+    tariffs_text = ""
+    for _, name, price, _, is_status in tariffs_list:
+        if is_status:
+            tariffs_text += f"— {name} — {price}₽\n"
     bot_msg = await call.message.answer(f"🔐 Подписка на VPN\n\nБезопасный и стабильный доступ к интернету без ограничений 🌐"
                               "\n\n💡 Что входит:\n\n— Подключение до 2 устройств\n— Высокая скорость"
-                              "\n— Простая настройка (QR или файл)\n— Поддержка при необходимости\n\n📅 Тарифы:\n\n— 7 дней — 99₽"
-                              "\n— 30 дней — 149₽\n— 6 месяцев — 540₽ (скидка 10%)\n— 12 месяцев — 1020₽ (скидка 15%)"
-                              "\n\nВыберите тариф 👇:", reply_markup=subscription_kb(mode_key=mode_key, trial_used=trial_used))
+                              f"\n— Простая настройка (QR или файл)\n— Поддержка при необходимости\n\n📅 Тарифы:\n\n{tariffs_text}\n"
+                              "Выберите тариф 👇:", reply_markup=subscription_kb(mode_key=mode_key, trial_used=trial_used))
     await state.update_data(last_msg_id=bot_msg.message_id)
     await state.set_state(Payment.tariff)
 

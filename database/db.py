@@ -112,6 +112,16 @@ class Database:
         self.__conn.commit()
         logging.info('Запись о подписке успешно создана в БД')
 
+    # добавление нового тарифа(админка)
+    def add_tariff(self, name, price, duration_days):
+        with self.__conn.cursor() as cursor:
+            cursor.execute(
+                '''INSERT IGNORE INTO tariffs(name, price, duration_days)
+                   VALUES (%s, %s, %s);''',
+                (name, price, duration_days,))
+        self.__conn.commit()
+        logging.info('Новый тариф добавлен в БД')
+
     #--ОБНОВЛЕНИЕ--
     # активация пробной подписки
     def update_profile_trial(self, user_id):
@@ -121,6 +131,60 @@ class Database:
                             WHERE user_id = %s ''', (user_id, ))
         self.__conn.commit()
         logging.info('Пробная подписка активирована')
+
+    # включение тарифа
+    def tariff_activation(self, tariff_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''UPDATE tariffs 
+                            SET is_active = 1
+                            WHERE id = %s ''', (tariff_id,))
+        self.__conn.commit()
+        logging.info('Тариф включен')
+
+    # включение метода
+    def method_activation(self, method_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''UPDATE payments_method 
+                            SET is_active = 1
+                            WHERE id = %s ''', (method_id,))
+        self.__conn.commit()
+        logging.info('Метод включен')
+
+    # выключение тарифа
+    def tariff_deactivation(self, tariff_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''UPDATE tariffs 
+                            SET is_active = 0
+                            WHERE id = %s ''', (tariff_id,))
+        self.__conn.commit()
+        logging.info('Тариф выключен')
+
+    # выключение метода
+    def method_deactivation(self, method_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''UPDATE payments_method 
+                            SET is_active = 0
+                            WHERE id = %s ''', (method_id,))
+        self.__conn.commit()
+        logging.info('Метод выключен')
+
+    # --УДАЛЕНИЕ--
+    #удаление тарифа по айди
+    def delete_tariff(self, tariff_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''DELETE FROM tariffs 
+                        WHERE id = %s''', (tariff_id,))
+        self.__conn.commit()
+        logging.info('Тариф удален из БД')
+
+    # удаление метода по айди
+    def delete_method(self, method_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''DELETE FROM payments_method 
+                            WHERE id = %s''', (method_id,))
+        self.__conn.commit()
+        logging.info('Метод удален из БД')
+
 
 
     #--ВЫВОДЫ--
@@ -143,10 +207,16 @@ class Database:
             cursor.execute("SELECT * FROM admins")
             return cursor.fetchall()
 
-    # выводим все тарифы
+    # выводим все включенные тарифы
     def get_all_tariffs(self):
         with self.__conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM tariffs WHERE is_active = 1")
+            cursor.execute("SELECT * FROM tariffs WHERE is_active = 1 ORDER BY duration_days ASC;")
+            return cursor.fetchall()
+
+    # выводим все выключенные тарифы
+    def get_all_tariffs_off(self):
+        with self.__conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM tariffs WHERE is_active = 0 ORDER BY duration_days ASC;")
             return cursor.fetchall()
 
     # выводим все методы оплат
