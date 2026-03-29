@@ -1,7 +1,7 @@
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from database.db import database
 
-def subscription_kb(mode_key=1, trial_used=True):
+def subscription_kb(mode_key=1, trial_used=True, is_subscription=False):
     modes = {1: 'user', 2: 'admin'}
     mode = modes[mode_key]
     kb = InlineKeyboardBuilder()
@@ -11,7 +11,7 @@ def subscription_kb(mode_key=1, trial_used=True):
         name, price, days, is_status = item
         if is_status:
             kb.button(text=f'💎 Тариф {name} ({price}₽)', callback_data=f'buy_{key}')
-    if trial_used:
+    if trial_used and not is_subscription:
         kb.button(text='🎁 Пробный бесплатный тариф 7 дней', callback_data='free_tariff') #тут делаем проверку использовал или нет, если нет, то кнопка есть
     if mode == 'admin':
         kb.button(text=f'⚙️ Изменить настройки оплаты', callback_data='payment_settings')
@@ -29,13 +29,7 @@ def payment_method_kb():
     kb.adjust(1)
     return kb.as_markup()
 
-def get_access_kb():
-    kb = InlineKeyboardBuilder()
-    kb.button(text='📱 QR-код', callback_data='get_qr')
-    kb.button(text='📄 Конфигурационный файл', callback_data=f'get_config')
-    kb.button(text='⬅️ В меню', callback_data='cancel_menu')
-    kb.adjust(1)
-    return kb.as_markup()
+
 
 def activate_trial_kb():
     kb = InlineKeyboardBuilder()

@@ -3,13 +3,15 @@ from aiogram.fsm.context import FSMContext
 from aiogram import Router, F
 from utils.delete_last_message import safe_delete, delete_last_message
 from keyboards.menu_kb import menu_kb
-from keyboards.admin_kb import payment_settings_kb, settings_tariff_kb, settings_payment_method_kb, get_tariff_kb
+from keyboards.admin_kb import payment_settings_kb, settings_tariff_kb, settings_payment_method_kb, get_tariff_kb, get_method_kb, profile_admin_kb
 from states.menu_state import Menu
 from states.admin_state import Admin
 from database.db import database
+import logging
 
 admin_router = Router()
 
+#--ПОДПИСКА--
 #настройка тарифов и методов оплат
 @admin_router.callback_query(F.data == "payment_settings")
 async def payment_settings(call: CallbackQuery, state: FSMContext):
@@ -47,9 +49,24 @@ async def settings_add(call: CallbackQuery, state: FSMContext):
                                             '\nТак же имя тарифа повторятся не должно, иначе он не сохранится!')
         await state.set_state(Admin.add_tariff_name)
         await state.update_data(last_msg_id=bot_msg.message_id)
-    else: #доделать
-        bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_payment_method_kb())
+    else:
+        bot_msg = await call.message.answer('Напишите название метода оплаты (как оно должно отображаться для клиента при оплате).')
+        await state.set_state(Admin.add_method)
         await state.update_data(last_msg_id=bot_msg.message_id)
+
+#название метода
+@admin_router.message(Admin.add_method)
+async def add_method(message: Message, state: FSMContext):
+    method_name = message.text
+    data = await state.get_data()
+    last_msg_id = data.get("last_msg_id")
+    await delete_last_message(last_msg_id, message)
+    database.add_method(method_name)
+    await message.answer(f'Метод "{method_name}" сохранен! ✅')
+    await state.clear()
+    await state.set_state(Menu.menu)
+    bot_msg = await message.answer("👋 С возвращением!\n\nВыберите действие 👇:", reply_markup=menu_kb())
+    await state.update_data(last_msg_id=bot_msg.message_id)
 
 #название тарифа
 @admin_router.message(Admin.add_tariff_name)
@@ -84,7 +101,7 @@ async def get_price(message: Message, state: FSMContext): #название за
     days_tariff = data.get("days_tariff")
     name_tariff = data.get("name_tariff")
     database.add_tariff(name_tariff, price_tariff, days_tariff)
-    await message.answer(f'Добавили тариф на {days_tariff} дней. Отображение для клиента будет: — Тариф {name_tariff} — {price_tariff}₽'
+    await message.answer(f'✅ Добавили тариф на {days_tariff} дней. Отображение для клиента будет: — Тариф {name_tariff} — {price_tariff}₽'
                                    f'\n\nЕсли вы допустили ошибку при создании тарифа, вам необходимо удалить его и добавить заново')
     await state.clear()
     await state.set_state(Menu.menu)
@@ -111,11 +128,22 @@ async def settings_del(call: CallbackQuery, state: FSMContext):
             tariffs_text += f"{idx}) {line}\n"
         bot_msg = await call.message.answer(f'Список тарифов:\n\n{tariffs_text}\nКакой тариф удалить? 👇:', reply_markup=get_tariff_kb(len(tariffs_lines), tariffs_list, mode_key=1))
         await state.update_data(last_msg_id=bot_msg.message_id)
-    else: #доделать
-        bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_payment_method_kb())
+    else:
+        methods_list = database.get_payments_method()
+        methods_lines = []
+        methods_text = ""
+        for _, name, is_status in methods_list:
+            if is_status:
+                status = '🟢 Включен'
+            else:
+                status = '🔴 Выключен'
+            methods_lines.append(f"{name} — {status}")
+        for idx, line in enumerate(methods_lines, 1):
+            methods_text += f"{idx}) {line}\n"
+        bot_msg = await call.message.answer(f'Список методов оплат:\n\n{methods_text}\nКакой метод удалить? 👇:', reply_markup=get_method_kb(len(methods_lines), methods_list, mode_key=1))
         await state.update_data(last_msg_id=bot_msg.message_id)
 
-#удаление тарифа ли метода
+#удаление тарифа или метода
 @admin_router.callback_query(F.data.startswith("num_del_"))
 async def num_tariff_or_method_del(call: CallbackQuery, state: FSMContext):
     await call.answer()
@@ -149,11 +177,26 @@ async def settings_on(call: CallbackQuery, state: FSMContext):
                 tariffs_lines.append(f"{name} — {price}₽ — {status}")
         for idx, line in enumerate(tariffs_lines, 1):
             tariffs_text += f"{idx}) {line}\n"
+        if not tariffs_text:
+            tariffs_text = 'Все тарифы уже включены ✅\n'
         bot_msg = await call.message.answer(f'Список тарифов:\n\n{tariffs_text}\nНажмите на тариф, чтобы включить его 👇:',
                                             reply_markup=get_tariff_kb(len(tariffs_lines), tariffs_list, mode_key=2))
         await state.update_data(last_msg_id=bot_msg.message_id)
-    else:  # доделать
-        bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_payment_method_kb())
+    else:
+        methods_list = database.get_payments_method_off()
+        methods_lines = []
+        methods_text = ""
+        for _, name, is_status in methods_list:
+            if not is_status:
+                status = '🔴 Выключен'
+                methods_lines.append(f"{name} — {status}")
+        for idx, line in enumerate(methods_lines, 1):
+            methods_text += f"{idx}) {line}\n"
+        if not methods_text:
+            methods_text = 'Все методы уже включены ✅\n'
+        bot_msg = await call.message.answer(
+            f'Список методов оплат:\n\n{methods_text}\nНажмите на метод, чтобы включить его 👇:',
+            reply_markup=get_method_kb(len(methods_lines), methods_list, mode_key=2))
         await state.update_data(last_msg_id=bot_msg.message_id)
 
 #выключение
@@ -172,14 +215,28 @@ async def settings_off(call: CallbackQuery, state: FSMContext):
                 tariffs_lines.append(f"{name} — {price}₽ — {status}")
         for idx, line in enumerate(tariffs_lines, 1):
             tariffs_text += f"{idx}) {line}\n"
+        if not tariffs_text:
+            tariffs_text = 'Все тарифы уже выключены ✅\n'
         bot_msg = await call.message.answer(
             f'Список тарифов:\n\n{tariffs_text}\nНажмите на тариф, чтобы выключить его 👇:',
             reply_markup=get_tariff_kb(len(tariffs_lines), tariffs_list, mode_key=3))
         await state.update_data(last_msg_id=bot_msg.message_id)
-    else:  # доделать
-        bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_payment_method_kb())
+    else:
+        methods_list = database.get_payments_method()
+        methods_lines = []
+        methods_text = ""
+        for _, name, is_status in methods_list:
+            if is_status:
+                status = '🟢 Включен'
+                methods_lines.append(f"{name} — {status}")
+        for idx, line in enumerate(methods_lines, 1):
+            methods_text += f"{idx}) {line}\n"
+        if not methods_text:
+            methods_text = 'Все методы уже выключены ✅\n'
+        bot_msg = await call.message.answer(
+            f'Список методов оплат:\n\n{methods_text}\nНажмите на метод, чтобы выключить его 👇:',
+            reply_markup=get_method_kb(len(methods_lines), methods_list, mode_key=3))
         await state.update_data(last_msg_id=bot_msg.message_id)
-
 
 #переключение
 @admin_router.callback_query(F.data.startswith("turn_"))
@@ -192,22 +249,120 @@ async def switch(call: CallbackQuery, state: FSMContext):
         if switch_mode == 'tariff':
             database.tariff_activation(tariff_id)
             await call.message.answer('Тариф включен 🟢')
+            await safe_delete(call.message)
+            bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_tariff_kb())
+            await state.update_data(last_msg_id=bot_msg.message_id)
         else:
             database.method_activation(tariff_id)
             await call.message.answer('Метод включен 🟢')
-        await safe_delete(call.message)
-        bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_tariff_kb())
-        await state.update_data(last_msg_id=bot_msg.message_id)
+            await safe_delete(call.message)
+            bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_payment_method_kb())
+            await state.update_data(last_msg_id=bot_msg.message_id)
     else:
         if switch_mode == 'tariff':
             database.tariff_deactivation(tariff_id)
             await call.message.answer('Тариф выключен 🔴')
+            await safe_delete(call.message)
+            bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_tariff_kb())
+            await state.update_data(last_msg_id=bot_msg.message_id)
         else:
             database.method_deactivation(tariff_id)
             await call.message.answer('Метод выключен 🔴')
-        await safe_delete(call.message)
-        bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_payment_method_kb())
+            await safe_delete(call.message)
+            bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_payment_method_kb())
+            await state.update_data(last_msg_id=bot_msg.message_id)
+
+#--ПРОФИЛЬ--
+#админка бота
+@admin_router.callback_query(F.data == "settings_bot")
+async def settings_bot(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await safe_delete(call.message)
+    bot_msg = await call.message.answer(
+        f'Выберите действие 👇:', reply_markup=profile_admin_kb())
+    await state.update_data(last_msg_id=bot_msg.message_id)
+
+#удалить юзера\админа
+@admin_router.callback_query(F.data.startswith("delete_"))
+async def delete_user_or_admin(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await safe_delete(call.message)
+    role = call.data.split("_")[1]
+    if role == 'user':
+        bot_msg = await call.message.answer(
+            f'Напишите ID пользователя числом, которого хотите удалить. Пример: 12345')
+        await state.update_data(last_msg_id=bot_msg.message_id)
+        await state.set_state(Admin.del_user)
+    else:
+        bot_msg = await call.message.answer(
+            f'Напишите ID админа числом, которого хотите удалить. Пример: 12345')
+        await state.update_data(last_msg_id=bot_msg.message_id)
+        await state.set_state(Admin.del_admin)
+
+@admin_router.message(Admin.del_user)
+async def del_user(message: Message, state: FSMContext):
+    try:
+        user_id = int(message.text)
+        data = await state.get_data()
+        last_msg_id = data.get("last_msg_id")
+        await delete_last_message(last_msg_id, message)
+        database.delete_user(user_id)
+        await state.clear()
+        await state.set_state(Menu.menu)
+        await message.answer("Вы успешно удалили клиента из базы! ✅")
+        bot_msg = await message.answer("👋 С возвращением!\n\nВыберите действие 👇:", reply_markup=menu_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)
+    except Exception as e:
+        logging.info(f'Ошибка при удалении пользователя: {e}')
+        bot_msg = await message.answer(
+            f'❌ Произошла ошибка, попробуйте снова', reply_markup=profile_admin_kb())
         await state.update_data(last_msg_id=bot_msg.message_id)
 
+@admin_router.message(Admin.del_admin)
+async def del_admin(message: Message, state: FSMContext):
+    try:
+        admin_id = int(message.text)
+        data = await state.get_data()
+        last_msg_id = data.get("last_msg_id")
+        await delete_last_message(last_msg_id, message)
+        database.delete_admin(admin_id)
+        await state.clear()
+        await state.set_state(Menu.menu)
+        await message.answer("Вы успешно удалили админа из базы! ✅")
+        bot_msg = await message.answer("👋 С возвращением!\n\nВыберите действие 👇:", reply_markup=menu_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)
+    except Exception as e:
+        logging.info(f'Ошибка при удалении админа: {e}')
+        bot_msg = await message.answer(
+            f'❌ Произошла ошибка, попробуйте снова', reply_markup=profile_admin_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)
 
+#добавить админа
+@admin_router.callback_query(F.data == "added_admin")
+async def added_admin(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await safe_delete(call.message)
+    await state.set_state(Admin.del_user)
+    bot_msg = await call.message.answer(
+        f'Напишите ID админа числом, которого хотите добавить. Пример: 12345')
+    await state.update_data(last_msg_id=bot_msg.message_id)
+    await state.set_state(Admin.add_admin)
 
+@admin_router.message(Admin.add_admin)
+async def add_admin(message: Message, state: FSMContext):
+    try:
+        admin_id = int(message.text)
+        data = await state.get_data()
+        last_msg_id = data.get("last_msg_id")
+        await delete_last_message(last_msg_id, message)
+        database.add_new_admin(admin_id)
+        await state.clear()
+        await state.set_state(Menu.menu)
+        await message.answer("Вы успешно добавили админа в базу! ✅")
+        bot_msg = await message.answer("👋 С возвращением!\n\nВыберите действие 👇:", reply_markup=menu_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)
+    except Exception as e:
+        logging.info(f'Ошибка при добавлении админа: {e}')
+        bot_msg = await message.answer(
+            f'❌ Произошла ошибка, попробуйте снова', reply_markup=profile_admin_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)

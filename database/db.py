@@ -98,6 +98,13 @@ class Database:
         self.__conn.commit()
         logging.info('Пользователь успешно добавлен в БД')
 
+    # добавляем нового админа
+    def add_new_admin(self, tg_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute("INSERT IGNORE INTO admins(tg_id) VALUES (%s)", (tg_id,))
+        self.__conn.commit()
+        logging.info('Админ успешно добавлен в БД')
+
     # создаем профиль
     def create_profile(self, user_id):
         with self.__conn.cursor() as cursor:
@@ -121,6 +128,16 @@ class Database:
                 (name, price, duration_days,))
         self.__conn.commit()
         logging.info('Новый тариф добавлен в БД')
+
+    # добавление нового тарифа(админка)
+    def add_method(self, name):
+        with self.__conn.cursor() as cursor:
+            cursor.execute(
+                '''INSERT IGNORE INTO payments_method(name)
+                    VALUES (%s);''',
+                (name,))
+        self.__conn.commit()
+        logging.info('Новый метод добавлен в БД')
 
 
     #--ОБНОВЛЕНИЕ--
@@ -169,6 +186,15 @@ class Database:
         self.__conn.commit()
         logging.info('Метод выключен')
 
+    # продление подписки
+    def update_subscription(self, user_id, end_date):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''UPDATE subscriptions 
+                            SET end_date = %s
+                            WHERE user_id = %s ''', (end_date, user_id,))
+        self.__conn.commit()
+        logging.info('Подписка продлена')
+
     # --УДАЛЕНИЕ--
     #удаление тарифа по айди
     def delete_tariff(self, tariff_id):
@@ -186,7 +212,21 @@ class Database:
         self.__conn.commit()
         logging.info('Метод удален из БД')
 
+    # удаление админа
+    def delete_admin(self, admin_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''DELETE FROM admins 
+                            WHERE tg_id = %s''', (admin_id,))
+        self.__conn.commit()
+        logging.info('Админ удален из БД')
 
+    # удаление юзера
+    def delete_user(self, user_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''DELETE FROM users
+                            WHERE tg_id = %s''', (user_id,))
+        self.__conn.commit()
+        logging.info('Пользователь удален из БД')
 
     #--ВЫВОДЫ--
     # получаем айди юзера
@@ -202,7 +242,7 @@ class Database:
             cursor.execute("SELECT * FROM users")
             return cursor.fetchall()
 
-    # выводим всех пользователей (возвращаем список всех строк)
+    # выводим всех пользователей
     def get_all_admins(self):
         with self.__conn.cursor() as cursor:
             cursor.execute("SELECT * FROM admins")
@@ -220,10 +260,22 @@ class Database:
             cursor.execute("SELECT * FROM tariffs WHERE is_active = 0 ORDER BY duration_days ASC;")
             return cursor.fetchall()
 
-    # выводим все методы оплат
+    # выводим все включенные методы оплат
     def get_payments_method(self):
         with self.__conn.cursor() as cursor:
             cursor.execute("SELECT * FROM payments_method WHERE is_active = 1")
+            return cursor.fetchall()
+
+    # выводим все включенные методы оплат
+    def get_payments_method_off(self):
+        with self.__conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM payments_method WHERE is_active = 0")
+            return cursor.fetchall()
+
+    # выводим дату активной подписке по юзеру
+    def get_subscription_date(self, user_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute("SELECT start_date, end_date FROM subscriptions WHERE user_id = %s AND is_active = 1", (user_id,))
             return cursor.fetchall()
 
 database = Database(DB_HOST, DB_USER, PASSWORD,3306)
