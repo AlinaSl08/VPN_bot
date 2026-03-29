@@ -9,7 +9,6 @@ def payment_settings_kb():
     kb.adjust(1)
     return kb.as_markup()
 
-
 def settings_tariff_kb():
     kb = InlineKeyboardBuilder()
     kb.button(text='☑️ Добавить тариф', callback_data='add_tariff')

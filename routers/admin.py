@@ -180,6 +180,7 @@ async def settings_off(call: CallbackQuery, state: FSMContext):
         bot_msg = await call.message.answer('Выберите действие ниже 👇:', reply_markup=settings_payment_method_kb())
         await state.update_data(last_msg_id=bot_msg.message_id)
 
+
 #переключение
 @admin_router.callback_query(F.data.startswith("turn_"))
 async def switch(call: CallbackQuery, state: FSMContext):

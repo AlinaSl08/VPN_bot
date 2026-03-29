@@ -5,7 +5,6 @@ from utils.delete_last_message import safe_delete
 from keyboards.menu_kb import menu_kb
 from states.menu_state import Menu
 
-
 menu_router = Router()
 
 #--ВЕРНУТЬСЯ В МЕНЮ--

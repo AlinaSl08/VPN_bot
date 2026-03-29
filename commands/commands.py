@@ -32,15 +32,12 @@ async def help(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("🤖 Список доступных команд бота: \n/start\n/menu\n/help")
 
-
-
 @commands_router.message(Command("menu"))
 async def menu(message: Message, state: FSMContext):
     await state.clear()
     bot_msg = await message.answer("Выберите действие:", reply_markup=menu_kb())
     await state.set_state(Menu.menu)
     await state.update_data(last_msg_id=bot_msg.message_id)
-
 
 async def set_bot_commands(bot):
     commands = [
@@ -49,8 +46,6 @@ async def set_bot_commands(bot):
         BotCommand(command="help", description="Список команд"),
     ]
     await bot.set_my_commands(commands) # отправляем телеграм список команд бота
-
-
 
 @commands_router.message(F.text, StateFilter(Menu.menu))
 async def ignore_menu(message: Message, state: FSMContext):

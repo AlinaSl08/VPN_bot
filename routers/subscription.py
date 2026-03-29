@@ -142,7 +142,6 @@ async def activate_trial_yes(call: CallbackQuery, state: FSMContext):
     bot_msg = await call.message.answer(f"🎉 Пробная подписка активирована! Она закончится {date_str} в {time_str}.\n\nКаким способом удобно получить доступ к VPN?:", reply_markup=get_access_kb())
     await state.update_data(last_msg_id=bot_msg.message_id)
 
-
 @subscription_router.callback_query(F.data == "activate_trial_no")
 async def activate_trial_no(call: CallbackQuery, state: FSMContext):
     await call.message.answer("Возвращаемся в меню...")

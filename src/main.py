@@ -13,7 +13,6 @@ from routers.admin import admin_router
 from commands.commands import commands_router
 from routers.about_the_service import about_the_service_router
 
-
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
 

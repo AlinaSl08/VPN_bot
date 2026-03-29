@@ -122,6 +122,7 @@ class Database:
         self.__conn.commit()
         logging.info('Новый тариф добавлен в БД')
 
+
     #--ОБНОВЛЕНИЕ--
     # активация пробной подписки
     def update_profile_trial(self, user_id):
