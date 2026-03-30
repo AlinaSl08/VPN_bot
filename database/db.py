@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 import logging
 import pandas as pd
+import tempfile
 
 load_dotenv('../.env')
 PASSWORD = os.getenv("PASSWORD_DB")
@@ -295,8 +296,10 @@ class Database:
         df['tg_id'] = df['tg_id'].astype(str)
         if 'created_at' in df.columns:
             df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime('%d.%m.%Y %H:%M')
-        file_path = "stats_users.xlsx"
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        file_path = temp_file.name
         df.to_excel(file_path, index=False)
+        temp_file.close()
         return file_path
 
     # список подписок клиентов (тг_айди, даты, тариф, дата создания)
@@ -310,14 +313,13 @@ class Database:
             columns = [desc[0] for desc in cursor.description]
         df = pd.DataFrame(rows, columns=columns)
         df['tg_id'] = df['tg_id'].astype(str)
-        if 'start_date' in df.columns:
-            df['start_date'] = pd.to_datetime(df['start_date']).dt.strftime('%d.%m.%Y %H:%M')
-        if 'end_date' in df.columns:
-            df['end_date'] = pd.to_datetime(df['end_date']).dt.strftime('%d.%m.%Y %H:%M')
-        if 'created_at' in df.columns:
-            df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime('%d.%m.%Y %H:%M')
-        file_path = "stats_orders.xlsx"
+        for col in ['start_date', 'end_date', 'created_at']:
+            if col in df.columns:
+                df[col] = pd.to_datetime(df[col]).dt.strftime('%d.%m.%Y %H:%M')
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx")
+        file_path = temp_file.name
         df.to_excel(file_path, index=False)
+        temp_file.close()
         return file_path
 
 

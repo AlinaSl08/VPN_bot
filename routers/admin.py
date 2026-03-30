@@ -9,6 +9,7 @@ from states.admin_state import Admin
 from database.db import database
 import logging
 from aiogram.types import FSInputFile
+import os
 
 
 admin_router = Router()
@@ -392,10 +393,14 @@ async def stats_orders(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await safe_delete(call.message)
     file_path = database.export_orders_to_excel()
-    excel_file = FSInputFile(file_path)
-    await call.message.answer_document(
-        excel_file,
-        caption="📊 Аналитика заказов")
+    try:
+        excel_file = FSInputFile(file_path, filename="stats_orders.xlsx")
+        await call.message.answer_document(
+            excel_file,
+            caption="📊 Аналитика заказов")
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
     await state.clear()
     await state.set_state(Menu.menu)
     bot_msg = await call.message.answer("Выберите действие 👇:", reply_markup=profile_admin_kb())
@@ -407,10 +412,14 @@ async def stats_user(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await safe_delete(call.message)
     file_path = database.export_users_to_excel()
-    excel_file = FSInputFile(file_path)
-    await call.message.answer_document(
-        excel_file,
-        caption="📊 Аналитика пользователей")
+    try:
+        excel_file = FSInputFile(file_path, filename="stats_users.xlsx")
+        await call.message.answer_document(
+            excel_file,
+            caption="📊 Аналитика пользователей")
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
     await state.clear()
     await state.set_state(Menu.menu)
     bot_msg = await call.message.answer("Выберите действие 👇:", reply_markup=profile_admin_kb())
