@@ -13,7 +13,7 @@ async def support(call: CallbackQuery):
     support_text = ('🆘 <b>Техническая поддержка сервиса</b>\n\n'
                     'По вопросам некорректной работы услуг или финансовых операций, пожалуйста, свяжитесь с оператором:'
                     '\n\n🔗 <a href="https://t.me/ClearNET_VPN_Help">Написать менеджеру</a>\n🔗 <a href="https://t.me/HClearNetVPN">Канал с новостями</a>'
-                    '\n\n<b>Режим работы:</b> 24/7.')
+                    '\n\nЛибо по почте: ClearNET.help@gmail.com\n\n<b>Режим работы:</b> 24/7.')
     await call.message.answer(support_text,
                               parse_mode="HTML",
                               link_preview_options=LinkPreviewOptions(is_disabled=True),

@@ -3,11 +3,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram import Router, F
 from utils.delete_last_message import safe_delete, delete_last_message
 from keyboards.menu_kb import menu_kb
-from keyboards.admin_kb import payment_settings_kb, settings_tariff_kb, settings_payment_method_kb, get_tariff_kb, get_method_kb, profile_admin_kb
+from keyboards.admin_kb import payment_settings_kb, settings_tariff_kb, settings_payment_method_kb, get_tariff_kb, get_method_kb, profile_admin_kb, view_statistics_kb
 from states.menu_state import Menu
 from states.admin_state import Admin
 from database.db import database
 import logging
+from aiogram.types import FSInputFile
+
 
 admin_router = Router()
 
@@ -344,18 +346,25 @@ async def added_admin(call: CallbackQuery, state: FSMContext):
     await safe_delete(call.message)
     await state.set_state(Admin.del_user)
     bot_msg = await call.message.answer(
-        f'Напишите ID админа числом, которого хотите добавить. Пример: 12345')
+        'Напишите числом ID админа, которого хотите добавить. Пример: 12345'
+        '\n\nЕсли желаете оставить подпись к ID, пишите через "/" без пробелов. Пример: 12345/Артем, 12345/Алина работа')
     await state.update_data(last_msg_id=bot_msg.message_id)
     await state.set_state(Admin.add_admin)
 
 @admin_router.message(Admin.add_admin)
 async def add_admin(message: Message, state: FSMContext):
     try:
-        admin_id = int(message.text)
+        admin = message.text
+        if "/" in admin:
+            admin_id = int(admin.split("/")[0])
+            admin_name = admin.split("/")[1]
+        else:
+            admin_id = admin
+            admin_name = None
         data = await state.get_data()
         last_msg_id = data.get("last_msg_id")
         await delete_last_message(last_msg_id, message)
-        database.add_new_admin(admin_id)
+        database.add_new_admin(admin_name, admin_id)
         await state.clear()
         await state.set_state(Menu.menu)
         await message.answer("Вы успешно добавили админа в базу! ✅")
@@ -366,3 +375,43 @@ async def add_admin(message: Message, state: FSMContext):
         bot_msg = await message.answer(
             f'❌ Произошла ошибка, попробуйте снова', reply_markup=profile_admin_kb())
         await state.update_data(last_msg_id=bot_msg.message_id)
+
+#выбор статистики
+@admin_router.callback_query(F.data == "view_statistics")
+async def view_statistics(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await safe_delete(call.message)
+    await state.set_state(Admin.del_user)
+    bot_msg = await call.message.answer(
+        'Выберите какую статистику желаете просмотреть:', reply_markup=view_statistics_kb())
+    await state.update_data(last_msg_id=bot_msg.message_id)
+
+# подписки
+@admin_router.callback_query(F.data == "stats_orders")
+async def stats_orders(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await safe_delete(call.message)
+    file_path = database.export_orders_to_excel()
+    excel_file = FSInputFile(file_path)
+    await call.message.answer_document(
+        excel_file,
+        caption="📊 Аналитика заказов")
+    await state.clear()
+    await state.set_state(Menu.menu)
+    bot_msg = await call.message.answer("Выберите действие 👇:", reply_markup=profile_admin_kb())
+    await state.update_data(last_msg_id=bot_msg.message_id)
+
+# список пользователей
+@admin_router.callback_query(F.data == "stats_user")
+async def stats_user(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await safe_delete(call.message)
+    file_path = database.export_users_to_excel()
+    excel_file = FSInputFile(file_path)
+    await call.message.answer_document(
+        excel_file,
+        caption="📊 Аналитика пользователей")
+    await state.clear()
+    await state.set_state(Menu.menu)
+    bot_msg = await call.message.answer("Выберите действие 👇:", reply_markup=profile_admin_kb())
+    await state.update_data(last_msg_id=bot_msg.message_id)

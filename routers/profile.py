@@ -7,7 +7,6 @@ from states.menu_state import Menu
 from keyboards.menu_kb import menu_kb
 from states.payment_state import Payment
 from database.db import database
-from datetime import datetime, timedelta
 
 profile_router = Router()
 
@@ -30,7 +29,7 @@ async def profile(call: CallbackQuery, state: FSMContext):
         status_subscription =  '🔴 Не активна'
         period_subscription = '???'
         subscription_mode = 0
-    admins = [admin[1] for admin in database.get_all_admins()]
+    admins = [admin[2] for admin in database.get_all_admins()]
     mode_key = 2 if tg_id in admins else 1
     bot_msg = await call.message.answer(
         f'👤 Ваш профиль:\n\n🆔 ID: {tg_id}\n\n🎫 Статус подписки: {status_subscription}'

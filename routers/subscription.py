@@ -24,7 +24,7 @@ async def subscription(call: CallbackQuery, state: FSMContext):
     tg_id = call.from_user.id
     user_id = database.get_user_id(tg_id)
     trial_used = database.is_exist_trial(user_id)
-    admins = [admin[1] for admin in database.get_all_admins()]
+    admins = [admin[2] for admin in database.get_all_admins()]
     mode_key = 2 if tg_id in admins else 1
     tariffs_list = database.get_all_tariffs()
     tariffs_text = ""

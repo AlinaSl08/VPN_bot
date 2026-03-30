@@ -67,9 +67,18 @@ def get_method_kb(count_method, methods_list, mode_key=1):
 #--ПРОФИЛЬ--
 def profile_admin_kb():
     kb = InlineKeyboardBuilder()
-    kb.button(text='🔥 Удалить клиента', callback_data='delete_user')
-    kb.button(text='💳 Добавить админа', callback_data='added_admin')
-    kb.button(text='💳 Удалить админа', callback_data='delete_admin')
+    kb.button(text='✅ Добавить админа', callback_data='added_admin')
+    kb.button(text='❌ Удалить админа', callback_data='delete_admin')
+    kb.button(text='❌ Удалить клиента', callback_data='delete_user')
+    kb.button(text='📊 Просмотреть статистику', callback_data='view_statistics')
     kb.button(text='⬅️ Назад', callback_data='profile')
+    kb.adjust(1)
+    return kb.as_markup()
+
+def view_statistics_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text='💰 Подписки', callback_data='stats_orders')
+    kb.button(text='👥 Список пользователей', callback_data='stats_user')
+    kb.button(text='⬅️ Назад', callback_data='settings_bot')
     kb.adjust(1)
     return kb.as_markup()

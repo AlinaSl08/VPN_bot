@@ -2,6 +2,7 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 import logging
+import pandas as pd
 
 load_dotenv('../.env')
 PASSWORD = os.getenv("PASSWORD_DB")
@@ -31,16 +32,17 @@ class Database:
             cursor.execute("CREATE DATABASE IF NOT EXISTS clearnet_vpn_db;")
             cursor.execute("USE clearnet_vpn_db;")
             #на случай сброса бд(УДАЛЯЕТ ВСЮ БД БЕЗВОЗВРАТНО)
-            #cursor.execute("DROP TABLE IF EXISTS users, tariffs, profile, subscriptions;")
+            #cursor.execute("DROP TABLE IF EXISTS users, tariffs, profile, subscriptions, admins;")
             cursor.execute('''CREATE TABLE IF NOT EXISTS users(
                             id INT PRIMARY KEY AUTO_INCREMENT,
                             tg_id BIGINT NOT NULL UNIQUE);''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS admins(
                                         id INT PRIMARY KEY AUTO_INCREMENT,
+                                        name VARCHAR(100),
                                         tg_id BIGINT NOT NULL UNIQUE);''')
             #вынести в отдельную функцию после настройки админки logging.info('Админ успешно добавлен в БД')
-            cursor.execute('''INSERT IGNORE INTO admins(tg_id)
-                                        VALUES (967760347), (1926843289)''')
+            cursor.execute('''INSERT IGNORE INTO admins(name, tg_id)
+                                        VALUES ('Алина SAD', 967760347), ('Артем VAV', 1926843289)''')
 
             cursor.execute('''CREATE TABLE IF NOT EXISTS profile(
                             id INT PRIMARY KEY AUTO_INCREMENT,
@@ -99,9 +101,9 @@ class Database:
         logging.info('Пользователь успешно добавлен в БД')
 
     # добавляем нового админа
-    def add_new_admin(self, tg_id):
+    def add_new_admin(self, name, tg_id):
         with self.__conn.cursor() as cursor:
-            cursor.execute("INSERT IGNORE INTO admins(tg_id) VALUES (%s)", (tg_id,))
+            cursor.execute("INSERT IGNORE INTO admins(name, tg_id) VALUES (%s, %s)", (name, tg_id,))
         self.__conn.commit()
         logging.info('Админ успешно добавлен в БД')
 
@@ -242,7 +244,7 @@ class Database:
             cursor.execute("SELECT * FROM users")
             return cursor.fetchall()
 
-    # выводим всех пользователей
+    # выводим всех админов
     def get_all_admins(self):
         with self.__conn.cursor() as cursor:
             cursor.execute("SELECT * FROM admins")
@@ -272,10 +274,51 @@ class Database:
             cursor.execute("SELECT * FROM payments_method WHERE is_active = 0")
             return cursor.fetchall()
 
-    # выводим дату активной подписке по юзеру
+    # выводим дату активной подписки по юзеру
     def get_subscription_date(self, user_id):
         with self.__conn.cursor() as cursor:
             cursor.execute("SELECT start_date, end_date FROM subscriptions WHERE user_id = %s AND is_active = 1", (user_id,))
             return cursor.fetchall()
+
+
+    #--ВЫГРУЗКИ--
+    #список профилей клиентов (тг_айди, пробная подписка, дата создания)
+    def export_users_to_excel(self):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''SELECT users.tg_id, profile.trial_used, profile.created_at
+                            FROM profile 
+                            JOIN users ON profile.user_id = users.id''')
+            rows = cursor.fetchall()
+            #названия колонок
+            columns = [desc[0] for desc in cursor.description]
+        df = pd.DataFrame(rows, columns=columns)
+        df['tg_id'] = df['tg_id'].astype(str)
+        if 'created_at' in df.columns:
+            df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime('%d.%m.%Y %H:%M')
+        file_path = "stats_users.xlsx"
+        df.to_excel(file_path, index=False)
+        return file_path
+
+    # список подписок клиентов (тг_айди, даты, тариф, дата создания)
+    def export_orders_to_excel(self):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''SELECT users.tg_id, subscriptions.start_date, subscriptions.end_date, tariffs.name, tariffs.price, subscriptions.created_at
+                            FROM subscriptions 
+                            JOIN users ON subscriptions.user_id = users.id
+                            LEFT JOIN tariffs ON subscriptions.tariff_id = tariffs.id''')
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+        df = pd.DataFrame(rows, columns=columns)
+        df['tg_id'] = df['tg_id'].astype(str)
+        if 'start_date' in df.columns:
+            df['start_date'] = pd.to_datetime(df['start_date']).dt.strftime('%d.%m.%Y %H:%M')
+        if 'end_date' in df.columns:
+            df['end_date'] = pd.to_datetime(df['end_date']).dt.strftime('%d.%m.%Y %H:%M')
+        if 'created_at' in df.columns:
+            df['created_at'] = pd.to_datetime(df['created_at']).dt.strftime('%d.%m.%Y %H:%M')
+        file_path = "stats_orders.xlsx"
+        df.to_excel(file_path, index=False)
+        return file_path
+
 
 database = Database(DB_HOST, DB_USER, PASSWORD,3306)
