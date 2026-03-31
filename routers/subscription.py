@@ -13,6 +13,7 @@ import os
 from dotenv import load_dotenv
 from database.db import database
 from datetime import datetime, timedelta
+from services.vpn_service import create_vpn_user
 
 subscription_router = Router()
 load_dotenv()
@@ -121,6 +122,7 @@ async def success_payment(message: Message, state: FSMContext):
         days = int(payload.split("_")[1])
         tg_id = message.from_user.id
         user_id = database.get_user_id(tg_id)
+        vpn_username = f"user_{tg_id}"
         start_date = datetime.now().replace(microsecond=0)
         end_date = start_date + timedelta(days=days)
         data = await state.get_data()
@@ -128,6 +130,7 @@ async def success_payment(message: Message, state: FSMContext):
         is_subscription = data.get("is_subscription")
         if not is_subscription: #если нет подписки еще
             database.making_subscription(user_id, start_date, end_date, tariff_id) #делаем запись о подписке
+            create_vpn_user(vpn_username, days)
         else: #если есть активная подписка
             subscription_list = database.get_subscription_date(user_id)
             new_end_date = subscription_list[0][1] + timedelta(days=days)

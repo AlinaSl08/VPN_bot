@@ -198,6 +198,7 @@ class Database:
         self.__conn.commit()
         logging.info('Подписка продлена')
 
+
     # --УДАЛЕНИЕ--
     #удаление тарифа по айди
     def delete_tariff(self, tariff_id):
@@ -230,6 +231,7 @@ class Database:
                             WHERE tg_id = %s''', (user_id,))
         self.__conn.commit()
         logging.info('Пользователь удален из БД')
+
 
     #--ВЫВОДЫ--
     # получаем айди юзера
