@@ -3,3 +3,4 @@ __pycache__/
 venv/
 .venv/
 *.log
+users_id_list.txt
