@@ -55,7 +55,7 @@ async def get_qr(call: CallbackQuery, state: FSMContext):
     await safe_delete(call.message)
     await state.clear()
     await state.set_state(Menu.menu)
-    bot_msg = await call.message.answer('Команда в разработке',
+    bot_msg = await call.message.answer('⚠️ Не рекомендуется использовать более чем на 2 устройствах',
                                         reply_markup=menu_kb())
     await state.update_data(last_msg_id=bot_msg.message_id)
 
@@ -66,7 +66,7 @@ async def get_config(call: CallbackQuery, state: FSMContext):
     await safe_delete(call.message)
     await state.clear()
     await state.set_state(Menu.menu)
-    bot_msg = await call.message.answer('Команда в разработке',
+    bot_msg = await call.message.answer('⚠️ Не рекомендуется использовать более чем на 2 устройствах',
                                         reply_markup=menu_kb())
     await state.update_data(last_msg_id=bot_msg.message_id)
 

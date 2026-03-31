@@ -126,14 +126,16 @@ async def success_payment(message: Message, state: FSMContext):
         data = await state.get_data()
         tariff_id = data.get("tariff_id")
         is_subscription = data.get("is_subscription")
-        if not is_subscription:
+        if not is_subscription: #если нет подписки еще
             database.making_subscription(user_id, start_date, end_date, tariff_id) #делаем запись о подписке
-        else:
+        else: #если есть активная подписка
             subscription_list = database.get_subscription_date(user_id)
             new_end_date = subscription_list[0][1] + timedelta(days=days)
-
             database.update_subscription(user_id, new_end_date)
         logging.info(f"Пользователь {tg_id} оплатил {days} дней.")
+        if database.is_exist_trial(user_id):  # если есть пробная подписка, убираем ее
+            database.update_profile_trial(user_id)
+
     bot_msg = await message.answer(
         "🎉 Поздравляем! Оплата прошла успешно.\n🔐 Каким способом удобно получить доступ к VPN?:",
         reply_markup=get_access_kb())

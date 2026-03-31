@@ -58,7 +58,7 @@ class Database:
                             duration_days INT NOT NULL,
                             is_active BOOL DEFAULT TRUE);''')
             cursor.execute('''INSERT IGNORE INTO tariffs(name, price, duration_days)
-                            VALUES ('7 дней', 99, 7), ('30 дней', 149, 30), ('6 месяцев', 540, 182),
+                            VALUES ('7 дней', 55, 7), ('30 дней', 100, 30), ('6 месяцев', 540, 182),
                             ('12 месяцев', 1020, 365);''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS subscriptions(
                             id INT PRIMARY KEY AUTO_INCREMENT,
