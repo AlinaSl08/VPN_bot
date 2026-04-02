@@ -33,7 +33,6 @@ async def main():
     dp.include_router(about_the_service_router)
     dp.include_router(support_router)
     dp.include_router(profile_router)
-
     await set_bot_commands(bot)
     await dp.start_polling(bot)
 

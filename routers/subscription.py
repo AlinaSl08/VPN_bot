@@ -13,7 +13,7 @@ import os
 from dotenv import load_dotenv
 from database.db import database
 from datetime import datetime, timedelta
-from services.vpn_service import create_vpn_user
+from services.vpn_service import create_vpn_user, extend_vpn_user
 
 subscription_router = Router()
 load_dotenv()
@@ -33,7 +33,7 @@ async def subscription(call: CallbackQuery, state: FSMContext):
         if is_status:
             tariffs_text += f"— {name} — {price}₽\n"
     is_subscription = database.get_subscription_date(user_id)
-    if not is_subscription: #если подписки нет
+    if not is_subscription: #если подписки нет или она закончилась
         bot_msg = await call.message.answer(f"🔐 Подписка на VPN\n\nБезопасный и стабильный доступ к интернету без ограничений 🌐"
                               "\n\n💡 Что входит:\n\n— Подключение до 2 устройств\n— Высокая скорость"
                               f"\n— Простая настройка (QR или файл)\n— Поддержка при необходимости\n\n📅 Тарифы:\n\n{tariffs_text}\n"
@@ -122,28 +122,39 @@ async def success_payment(message: Message, state: FSMContext):
         days = int(payload.split("_")[1])
         tg_id = message.from_user.id
         user_id = database.get_user_id(tg_id)
-        vpn_username = f"user_{tg_id}"
         start_date = datetime.now().replace(microsecond=0)
         end_date = start_date + timedelta(days=days)
         data = await state.get_data()
         tariff_id = data.get("tariff_id")
         is_subscription = data.get("is_subscription")
-        if not is_subscription: #если нет подписки еще
+        if not is_subscription: #если нет подписки еще или она закончилась
             database.making_subscription(user_id, start_date, end_date, tariff_id) #делаем запись о подписке
-            create_vpn_user(vpn_username, days)
+
+            for suffix in ["PH", "PC"]: #создаем 2 юзера
+                print(f'Кол-во дней при создании юзера впн {days}')
+                create_vpn_user(f"{tg_id}_{suffix}", days=days)
+
         else: #если есть активная подписка
             subscription_list = database.get_subscription_date(user_id)
             new_end_date = subscription_list[0][1] + timedelta(days=days)
             database.update_subscription(user_id, new_end_date)
+            #продление сразу 2 конфигов
+            for suffix in ["PH", "PC"]:
+                vpn_username = f"{tg_id}_{suffix}"
+                success = extend_vpn_user(vpn_username, days=days)
+                if success:
+                    bot_msg = await message.answer(
+                        "🎉 Поздравляем! Оплата прошла успешно.\n🔐 Каким способом удобно получить доступ к VPN?:",
+                        reply_markup=get_access_kb())
+                    await state.update_data(last_msg_id=bot_msg.message_id)
+                else:
+                    bot_msg = await message.answer('Не удалось оформить подписку. Обратитесь в поддержку 😞',
+                                                        reply_markup=menu_kb())
+                    await state.update_data(last_msg_id=bot_msg.message_id)
         logging.info(f"Пользователь {tg_id} оплатил {days} дней.")
         if database.is_exist_trial(user_id):  # если есть пробная подписка, убираем ее
             database.update_profile_trial(user_id)
-
-    bot_msg = await message.answer(
-        "🎉 Поздравляем! Оплата прошла успешно.\n🔐 Каким способом удобно получить доступ к VPN?:",
-        reply_markup=get_access_kb())
-    await state.update_data(last_msg_id=bot_msg.message_id)
-    await state.set_state(Payment.access)
+        await state.set_state(Payment.access)
 
 @subscription_router.callback_query(F.data == "free_tariff")
 async def free_tariff(call: CallbackQuery, state: FSMContext):
@@ -164,6 +175,8 @@ async def activate_trial_yes(call: CallbackQuery, state: FSMContext):
     start_date = datetime.now().replace(microsecond=0)
     end_date = start_date + timedelta(days=7)
     database.making_subscription(user_id, start_date, end_date, None)
+    for suffix in ["PH", "PC"]:  # создаем 2 юзера
+        create_vpn_user(f"{tg_id}_{suffix}", days=7) #7 дней
     date_str = end_date.strftime("%d.%m.%Y")
     time_str = end_date.strftime("%H:%M")
     bot_msg = await call.message.answer(f"🎉 Пробная подписка активирована! Она закончится {date_str} в {time_str}."

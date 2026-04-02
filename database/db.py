@@ -33,7 +33,7 @@ class Database:
             cursor.execute("CREATE DATABASE IF NOT EXISTS clearnet_vpn_db;")
             cursor.execute("USE clearnet_vpn_db;")
             #на случай сброса бд(УДАЛЯЕТ ВСЮ БД БЕЗВОЗВРАТНО)
-            #cursor.execute("DROP TABLE IF EXISTS users, tariffs, profile, subscriptions, admins;")
+            cursor.execute("DROP TABLE IF EXISTS users, tariffs, profile, subscriptions, admins;")
             cursor.execute('''CREATE TABLE IF NOT EXISTS users(
                             id INT PRIMARY KEY AUTO_INCREMENT,
                             tg_id BIGINT NOT NULL UNIQUE);''')
@@ -58,7 +58,7 @@ class Database:
                             duration_days INT NOT NULL,
                             is_active BOOL DEFAULT TRUE);''')
             cursor.execute('''INSERT IGNORE INTO tariffs(name, price, duration_days)
-                            VALUES ('7 дней', 55, 7), ('30 дней', 100, 30), ('6 месяцев', 540, 182),
+                            VALUES ('7 дней', 55, 7), ('30 дней', 100, 30), ('6 месяцев', 540, 183),
                             ('12 месяцев', 1020, 365);''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS subscriptions(
                             id INT PRIMARY KEY AUTO_INCREMENT,

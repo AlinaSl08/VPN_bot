@@ -16,43 +16,91 @@ PASSWORD = os.getenv("PASSWORD")
 IP = os.getenv("IP")
 USERNAME= os.getenv("SSH_USER")
 
-print(f"DEBUG: Host='{IP}'")
-print(f"DEBUG: User='{USERNAME}'")
-print(f"DEBUG: Pass='{PASSWORD}'")
+#!!Команды не будут работать без заготовленных скриптов, если у вас выполняются эти действия по другим командам то для работы необходимо изменить их в коде!!
+
 
 def create_vpn_user(username: str, days: int = 1):
     ssh = paramiko.SSHClient() #создаём SSH-клиент
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy()) #выдаем доверие, чтобы не было ошибки
     ssh.connect(IP, port=22, username=USERNAME, password=PASSWORD, look_for_keys=False,
     allow_agent=False) #подключаемся к серверу
-    print(f"Trying to login as: '{USERNAME}' with password: '{PASSWORD}'")
     try:
-        # создаём пользователя
-        command = f"sudo pivpn-temp {username} {days}"
-        stdin, stdout, stderr = ssh.exec_command(command) #получаем ввод\результат\ошибки
-        error = stderr.read().decode()  #читаем ошибки и переводим в строку
-        if error:
-            raise Exception(error)
-        return True
+        logging.info(f"Создаём пользователя {username}...")
+        # Добавляем экспорт путей перед запуском скрипта
+        command = (
+        'bash -lc "'
+        'export HOME=/root; '
+        'export PATH=$PATH:/usr/local/bin:/usr/sbin:/sbin; '
+        f'sudo -E /usr/local/bin/wg_temp.sh {username} {days}'
+        '"'
+        )
+        logging.info(f"Выполняем команду для {username}...")
+        stdin, stdout, stderr = ssh.exec_command(command, get_pty=True)
+
+        exit_status = stdout.channel.recv_exit_status()
+        output = stdout.read().decode().strip()
+        error_output = stderr.read().decode().strip()
+        time.sleep(2)
+        if exit_status != 0:
+            raise Exception(f"Ошибка скрипта (код {exit_status}): {error_output  or output}")
+        time.sleep(0.5)
+
+        target_path = f"/etc/wireguard/configs/{username}.conf"
+        check_cmd = f"test -f {target_path} && echo EXISTS || echo NOT_EXISTS"
+
+        stdin_c, stdout_c, stderr_c = ssh.exec_command(check_cmd, get_pty=True)
+        result = stdout_c.read().decode().strip()
+        if result == "EXISTS":
+            logging.info(f"✅ Файл успешно создан и подтвержден: {target_path}")
+            return True
+        else:
+            raise Exception(f"Скрипт отработал, но файл {target_path} не появился.")
+    except Exception as e:
+        logging.error(f"❌ Ошибка создания VPN: {e}")
+        raise
     finally:
         ssh.close()
 
+def extend_vpn_user(username: str, days: int = 7):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        ssh.connect(IP, port=22, username=USERNAME, password=PASSWORD)
+        logging.info(f"Продлеваем подписку для {username} на {days} дней...")
+        command = f"sudo /usr/local/bin/wg-extend.sh {username} {days}"
+        stdin, stdout, stderr = ssh.exec_command(command)
+        error = stderr.read().decode()
+        if error:
+            logging.error(f"Ошибка при продлении: {error}")
+            return False
+
+        #уточнить надо ли это
+        # update_config_cmd = f"pivpn -qr {username} > /root/temp_wg_configs/{username}.conf"
+        # ssh.exec_command(update_config_cmd)
+
+        logging.info(f"Подписка для {username} успешно продлена")
+        return True
+    except Exception as e:
+        logging.error(f"Ошибка SSH: {e}")
+        return False
+    finally:
+        ssh.close()
 
 def get_config(username: str, retries: int = 5):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     ssh.connect(IP, username=USERNAME, password=PASSWORD)
     try:
-        command = f"cat /root/temp_wg_configs/{username}.conf"
-        for _ in range(retries):
+        logging.info('Ждём создание конфига...')
+        command = f"sudo cat /etc/wireguard/configs/{username}.conf 2>/dev/null"
+        for i in range(retries):
             stdin, stdout, stderr = ssh.exec_command(command)
-            error = stderr.read().decode()
-            config = stdout.read().decode()
-            if config:
+            config = stdout.read().decode().strip()
+            if config and "Interface" in config:
+                logging.info(f"Конфиг найден на попытке {i + 1}")
                 return config
-            if error:
-                raise Exception(error)
-            time.sleep(1)
+            logging.warning(f"Ожидание файла... попытка {i + 1}")
+            time.sleep(5)
         raise Exception("Конфиг не найден после ожидания")
     finally:
         ssh.close()
@@ -71,6 +119,7 @@ def get_qr(username: str):
 
 def generate_qr_image(config: str):
     qr = qrcode.make(config)
+    logging.info('Генерируем QR...')
     buffer = BytesIO()
     qr.save(buffer, format="PNG")
     buffer.seek(0)

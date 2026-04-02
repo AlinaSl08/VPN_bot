@@ -9,6 +9,7 @@ from states.payment_state import Payment
 from database.db import database
 from services.vpn_service import get_config, generate_qr_image
 from aiogram.types import BufferedInputFile
+import logging
 
 profile_router = Router()
 
@@ -56,20 +57,26 @@ async def send_qr(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await safe_delete(call.message)
     tg_id = call.from_user.id
-    vpn_username = f"user_{tg_id}"
+    suffixes  = ["PH", "PC"]
     try:
-        config = get_config(vpn_username)
-        if not config:
-            await call.message.answer("❌ Конфиг не найден. Обратитесь в поддержку")
-            return
-        qr_image = generate_qr_image(config)
-        file = BufferedInputFile(qr_image.read(), filename="vpn_qr.png")
-        await call.message.answer_photo(file,
-            f'📱 Ваш QR-код:\n\n⚠️ Не рекомендуется использовать более чем на 2 устройствах',
-            reply_markup=menu_kb())
+        await call.message.answer("⏳ Генерируем QR-коды для ваших устройств (1 и 2)...")
+        for suffix in suffixes:
+            vpn_username = f"{tg_id}_{suffix}"
+            config = get_config(vpn_username)
+            print(config)
+            if config:
+                qr_image = generate_qr_image(config)
+                file_data = qr_image.getvalue()
+                file = BufferedInputFile(file_data, filename=f"qr_{suffix}.png")
+                await call.message.answer_photo(file,
+                    caption=f"✅ QR-код \n\n⚠️ Используйте этот код строго на одном устройстве.")
+            else:
+                await call.message.answer(f"❌ Конфиг {suffix} не найден. Обратитесь в поддержку.")
+        bot_msg = await call.message.answer('Выберите действие:',reply_markup=menu_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)
     except Exception as e:
         await call.message.answer("❌ Ошибка при получении доступа. Обратитесь в поддержку")
-        print(e)
+        logging.info(f'Ошибка при создании QR: {e}')
     await state.clear()
     await state.set_state(Menu.menu)
 
@@ -79,17 +86,25 @@ async def send_config(call: CallbackQuery, state: FSMContext):
     await call.answer()
     await safe_delete(call.message)
     tg_id = call.from_user.id
-    vpn_username = f"user_{tg_id}"
-    config = get_config(vpn_username)
-    if not config:
-        await call.message.answer("❌ Конфиг не найден. Обратитесь в поддержку")
-    file = BufferedInputFile(config.encode(), filename="vpn.conf")
-    await call.message.answer_document(file, caption="📄 Ваш конфиг\n\n ⚠️ Не рекомендуется использовать более чем на 2 устройствах")
+    suffixes = ["PH", "PC"]
+    try:
+        await call.message.answer("⏳ Подготавливаем файлы конфигурации...")
+        for suffix in suffixes:
+            vpn_username = f"{tg_id}_{suffix}"
+            config = get_config(vpn_username)
+            if config:
+                file = BufferedInputFile(config.encode(), filename=f"vpn_{suffix}.conf")
+                await call.message.answer_document(file,
+                    caption=f"📄 Файл конфигурации \n\n⚠️ Используйте этот файл строго на одном устройстве.")
+        bot_msg = await call.message.answer('Выберите действие:',
+                                            reply_markup=menu_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)
+    except Exception as e:
+        logging.info(f"Ошибка в отправке конфига: {e}")
+        await call.message.answer("❌ Ошибка при загрузке файлов.")
     await state.clear()
     await state.set_state(Menu.menu)
-    bot_msg = await call.message.answer('Выберите действие:',
-                                        reply_markup=menu_kb())
-    await state.update_data(last_msg_id=bot_msg.message_id)
+
 
 @profile_router.message(Payment.access)
 async def access_selection(message: Message, state: FSMContext):
