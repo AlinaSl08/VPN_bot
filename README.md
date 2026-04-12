@@ -16,17 +16,20 @@ Telegram-бот для продажи и автоматической выдач
 
 Проект построен с использованием:
 
-+ aiogram (FSM)
++ Python (aiogram 3.x)
 + MySQL
 + модульной структуры
   
 Структура проекта:
 
-routers/
-states/
-keyboards/
+commands/
 database/
+keyboards/
+routers/
+services/
+states/
 utils/
+
 
 ## 💾 База данных
 
@@ -58,25 +61,30 @@ utils/
 ```
 git clone https://github.com/AlinaSl08/VPN_bot.git
 ```
-2. Установить зависимости:
+2. Создать .env файл.
+Скопировать .env.example и заполнить:
+
+3. Запуск проекта:
+```
+docker compose up -d --build
+```
+4. Проверка работы:
+```
+docker ps
+```
+или открыть Telegram бот и написать /start
+
+5. Обновление проекта
+```
+git pull
+docker compose up -d --build
+```
+⚙️ Локальный запуск (без Docker)
 ```
 pip install -r requirements.txt
-```
-3. Создать .env файл:
-```
-BOT_TOKEN=your_token
-PAYMENT_TOKEN_1=your_payment_token
-```
-4. Запустить бота:
-```
-python main.py
+python src/main.py
 ```
 
-## 📌 В планах
-+ 🔔 Уведомления об окончании подписки
-+ 🖥️ Интеграция с WireGuard сервером
-+ 🐳 Docker деплой
-  
 ## 👩‍💻 Автор
 
 **Алина** - начинающий backend-разработчик

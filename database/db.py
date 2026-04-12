@@ -4,29 +4,36 @@ from dotenv import load_dotenv
 import logging
 import pandas as pd
 import tempfile
+import time
 
-load_dotenv('../.env')
+#load_dotenv('../.env')
+load_dotenv()
 PASSWORD = os.getenv("PASSWORD_DB")
 DB_HOST = os.getenv("DB_HOST")
 DB_USER = os.getenv("DB_USER")
-
+DB_NAME = os.getenv("DB_NAME")
+DB_PORT = int(os.getenv("DB_PORT", 3306))
 
 class Database:
-    def __init__(self, db_host, db_user, password, port):
+    def __init__(self, db_host, db_user, password, name, port):
         self.__conn = None
-        self.connect_db(db_host, db_user, password, port)
+        self.connect_db(db_host, db_user, password, name, port)
         self.init_db()
 
-    def connect_db(self, db_host, db_user, password, port):
-        try:
-            self.__conn = mysql.connector.connect(
-                host=db_host,
-                user=db_user,
-                password=password,
-                port=port)
-            print("Подключение успешно!")
-        except Exception as e:
-            print("Подключение не удалось! Ошибка:", e)
+    def connect_db(self, db_host, db_user, password, name, port):
+        while True:
+            try:
+                self.__conn = mysql.connector.connect(
+                    host=db_host,
+                    user=db_user,
+                    password=password,
+                    database=name,
+                    port=port)
+                print("Подключение успешно!")
+                break
+            except Exception as e:
+                print("Подключение не удалось! Ошибка:", e)
+                time.sleep(3)
 
     def init_db(self):
         with self.__conn.cursor() as cursor:
@@ -389,4 +396,4 @@ class Database:
         return file_path
 
 
-database = Database(DB_HOST, DB_USER, PASSWORD,3306)
+database = Database(DB_HOST, DB_USER, PASSWORD, DB_NAME, DB_PORT)
