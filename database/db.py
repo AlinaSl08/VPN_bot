@@ -33,7 +33,7 @@ class Database:
             cursor.execute("CREATE DATABASE IF NOT EXISTS clearnet_vpn_db;")
             cursor.execute("USE clearnet_vpn_db;")
             #на случай сброса бд(УДАЛЯЕТ ВСЮ БД БЕЗВОЗВРАТНО)
-            cursor.execute("DROP TABLE IF EXISTS users, tariffs, profile, subscriptions, admins, payments_method;")
+            #cursor.execute("DROP TABLE IF EXISTS users, tariffs, profile, subscriptions, admins, payments_method;")
             cursor.execute('''CREATE TABLE IF NOT EXISTS users(
                             id INT PRIMARY KEY AUTO_INCREMENT,
                             tg_id BIGINT NULL UNIQUE,

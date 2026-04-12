@@ -36,6 +36,11 @@ async def help(message: Message, state: FSMContext):
     await state.clear()
     await message.answer("🤖 Список доступных команд бота: \n/start\n/menu\n/help")
 
+@commands_router.message(Command("instructions"))
+async def instructions(message: Message, state: FSMContext):
+    await state.clear()
+    await message.answer('<a href="https://telegra.ph/Instrukciya-po-podklyucheniyu-VPN-WireGuard-03-23">📖 Инструкция подключения</a>', parse_mode='HTML')
+
 @commands_router.message(Command("menu"))
 async def menu(message: Message, state: FSMContext):
     await state.clear()
@@ -48,6 +53,7 @@ async def set_bot_commands(bot):
         BotCommand(command="start", description="Запустить бота"),
         BotCommand(command="menu", description="Показать меню"),
         BotCommand(command="help", description="Список команд"),
+        BotCommand(command="instructions", description="Инструкция подключения")
     ]
     await bot.set_my_commands(commands) # отправляем телеграм список команд бота
 

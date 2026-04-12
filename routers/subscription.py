@@ -292,11 +292,8 @@ async def tariff_selection(message: Message, state: FSMContext):
     tg_id = message.from_user.id
     user_id = database.get_user_id(tg_id)
     trial_used = database.is_exist_trial(user_id)
-    admins = [admin[1] for admin in database.get_all_admins()]
-    if tg_id in admins:  # является ли юзер админом
-        mode_key = 2
-    else:
-        mode_key = 1
+    admins = [admin[2] for admin in database.get_all_admins()]
+    mode_key = 2 if tg_id in admins else 1 # является ли юзер админом
     bot_msg = await message.answer(
         "Пожалуйста, выберите тариф с помощью кнопок ниже 👇",
         reply_markup=subscription_kb(mode_key=mode_key, trial_used=trial_used))

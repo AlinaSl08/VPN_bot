@@ -35,11 +35,13 @@ async def profile(call: CallbackQuery, state: FSMContext):
         subscription_mode = 0
     admins = [admin[2] for admin in database.get_all_admins()]
     mode_key = 2 if tg_id in admins else 1
+    await state.update_data(mode_key=mode_key, subscription_mode=subscription_mode)
     bot_msg = await call.message.answer(
         f'👤 Ваш профиль:\n\n🆔 ID: {tg_id}\n\n🎫 Статус подписки: {status_subscription}'
         f'\n\n📅 Период подписки: {period_subscription}\n\n⏳ Пробный период: {trial}',
         reply_markup=profile_kb(mode_key, subscription_mode))
     await state.update_data(last_msg_id=bot_msg.message_id)
+    await state.set_state(Profile.profile)
 
 @profile_router.callback_query(F.data == "link_account")
 async def link_account(call: CallbackQuery, state: FSMContext):
@@ -136,4 +138,16 @@ async def access_selection(message: Message, state: FSMContext):
     bot_msg = await message.answer(
         "Пожалуйста, выберите способ получения доступа с помощью кнопок ниже 👇",
         reply_markup=get_access_kb())
+    await state.update_data(last_msg_id=bot_msg.message_id)
+
+@profile_router.message(Profile.profile)
+async def profile_selection(message: Message, state: FSMContext):
+    data = await state.get_data()
+    last_msg_id = data.get("last_msg_id")
+    mode_key = data.get("mode_key")
+    subscription_mode = data.get("subscription_mode")
+    await delete_last_message(last_msg_id, message)
+    bot_msg = await message.answer(
+        "Пожалуйста, выберите действие с помощью кнопок ниже 👇",
+        reply_markup=profile_kb(mode_key, subscription_mode))
     await state.update_data(last_msg_id=bot_msg.message_id)
