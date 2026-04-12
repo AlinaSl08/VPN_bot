@@ -14,6 +14,7 @@ from routers.support import support_router
 from routers.profile import profile_router
 from commands.commands import commands_router
 from routers.about_the_service import about_the_service_router
+from utils.scheduler import setup_scheduler
 
 load_dotenv()
 TOKEN = os.getenv("BOT_TOKEN")
@@ -34,7 +35,8 @@ async def main():
     dp.include_router(support_router)
     dp.include_router(profile_router)
     await set_bot_commands(bot)
-    await dp.start_polling(bot)
+    scheduler = await setup_scheduler(bot)
+    await dp.start_polling(bot, scheduler=scheduler)
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -33,10 +33,12 @@ class Database:
             cursor.execute("CREATE DATABASE IF NOT EXISTS clearnet_vpn_db;")
             cursor.execute("USE clearnet_vpn_db;")
             #на случай сброса бд(УДАЛЯЕТ ВСЮ БД БЕЗВОЗВРАТНО)
-            cursor.execute("DROP TABLE IF EXISTS users, tariffs, profile, subscriptions, admins;")
+            cursor.execute("DROP TABLE IF EXISTS users, tariffs, profile, subscriptions, admins, payments_method;")
             cursor.execute('''CREATE TABLE IF NOT EXISTS users(
                             id INT PRIMARY KEY AUTO_INCREMENT,
-                            tg_id BIGINT NOT NULL UNIQUE);''')
+                            tg_id BIGINT NULL UNIQUE,
+                            phone VARCHAR(20) UNIQUE,
+                            password_hash VARCHAR(255));''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS admins(
                                         id INT PRIMARY KEY AUTO_INCREMENT,
                                         name VARCHAR(100),
@@ -58,7 +60,7 @@ class Database:
                             duration_days INT NOT NULL,
                             is_active BOOL DEFAULT TRUE);''')
             cursor.execute('''INSERT IGNORE INTO tariffs(name, price, duration_days)
-                            VALUES ('7 дней', 55, 7), ('30 дней', 100, 30), ('6 месяцев', 540, 183),
+                            VALUES ('7 дней', 100, 7), ('30 дней', 150, 30), ('6 месяцев', 540, 183),
                             ('12 месяцев', 1020, 365);''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS subscriptions(
                             id INT PRIMARY KEY AUTO_INCREMENT,
@@ -74,6 +76,8 @@ class Database:
                             id INT PRIMARY KEY AUTO_INCREMENT,
                             name VARCHAR(200) NOT NULL UNIQUE,
                             is_active BOOL DEFAULT TRUE);''')
+            cursor.execute('''INSERT IGNORE INTO payments_method(name)
+                            VALUES ('Yoomoney');''')
         self.__conn.commit()
 
     # --ПРОВЕРКА--
@@ -132,7 +136,7 @@ class Database:
         self.__conn.commit()
         logging.info('Новый тариф добавлен в БД')
 
-    # добавление нового тарифа(админка)
+    # добавление нового метода(админка)
     def add_method(self, name):
         with self.__conn.cursor() as cursor:
             cursor.execute(
@@ -198,6 +202,59 @@ class Database:
         self.__conn.commit()
         logging.info('Подписка продлена')
 
+     # привязка аккаунта
+    def link_tg_id(self, tg_id, phone):
+        with self.__conn.cursor() as cursor:
+            #  Ищем, есть ли уже строка с этим номером телефона
+            cursor.execute("SELECT tg_id FROM users WHERE phone = %s", (phone,))
+            row_phone = cursor.fetchone()
+
+            # Ищем, есть ли уже строка с этим tg_id
+            cursor.execute("SELECT phone FROM users WHERE tg_id = %s", (tg_id,))
+            row_tg = cursor.fetchone()
+
+            # СЦЕНАРИЙ А: Номер уже привязан к ДРУГОМУ тг айди
+            if row_phone and row_phone[0] is not None and row_phone[0] != tg_id:
+                logging.info(f'Номер {phone} уже занят другим Telegram аккаунтом')
+                return False
+
+            # СЦЕНАРИЙ Б: Этот тг айди уже привязан к ДРУГОМУ номеру
+            if row_tg and row_tg[0] is not None and row_tg[0] != phone:
+                logging.info(f'Ваш Telegram уже привязан к номеру {row_tg[0]}')
+                return False
+
+            # СЦЕНАРИЙ В: Есть две разные строки (одна с тг, другая с номером) — НУЖНО СЛИТЬ
+            if row_phone and row_tg:
+                # Удаляем временную строку, где был только тг айди
+                cursor.execute("DELETE FROM users WHERE tg_id = %s AND phone IS NULL", (tg_id,))
+                # Обновляем строку, где был номер, добавляя туда тг айди
+                cursor.execute("UPDATE users SET tg_id = %s WHERE phone = %s", (tg_id, phone))
+
+            # СЦЕНАРИЙ Г: Есть только строка с номером (без тг)
+            elif row_phone:
+                cursor.execute("UPDATE users SET tg_id = %s WHERE phone = %s", (tg_id, phone))
+
+            # СЦЕНАРИЙ Д: Номера в базе вообще нет
+            else:
+                # Если записи с тг_айди тоже нет, создаем новую
+                if not row_tg:
+                    cursor.execute("INSERT INTO users (tg_id, phone) VALUES (%s, %s)", (tg_id, phone))
+                else:
+                    # Если строка с тг_айди была, просто дописываем туда номер
+                    cursor.execute("UPDATE users SET phone = %s WHERE tg_id = %s", (phone, tg_id))
+        self.__conn.commit()
+        logging.info('Аккаунт привязан')
+        return True
+
+    # просрочка подписки
+    def overdue_subscription(self, user_id):
+        with self.__conn.cursor() as cursor:
+            cursor.execute('''UPDATE subscriptions 
+                            SET is_active = 0
+                            WHERE user_id = %s AND is_active = 1''', (user_id, ))
+        self.__conn.commit()
+        logging.info('Подписка отмечена как просрочена')
+
 
     # --УДАЛЕНИЕ--
     #удаление тарифа по айди
@@ -238,6 +295,13 @@ class Database:
     def get_user_id(self, user_id):
         with self.__conn.cursor() as cursor:
             cursor.execute("SELECT id FROM users WHERE tg_id = %s", (user_id,))
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    #ищем юзера по телефону
+    def get_user_by_phone(self, phone):
+        with self.__conn.cursor() as cursor:
+            cursor.execute("SELECT id FROM users WHERE phone = %s", (phone,))
             row = cursor.fetchone()
             return row[0] if row else None
 

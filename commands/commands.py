@@ -7,6 +7,10 @@ from states.menu_state import Menu
 from keyboards.menu_kb import menu_kb
 from database.db import database
 
+from utils.scheduler import schedule_single_subscription
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from aiogram import Bot
+
 commands_router = Router()
 
 @commands_router.message(Command("start"))

@@ -10,6 +10,7 @@ def profile_kb(mode_key=1, subscription_mode=0):
         kb.button(text='⭐ Купить подписку', callback_data='buy_subscription')
     if mode == 'admin':
         kb.button(text='⚙️ Настройки бота', callback_data='settings_bot')
+    kb.button(text='🔗 Привязать аккаунт', callback_data='link_account')
     kb.button(text='⬅️ В меню', callback_data='cancel_menu')
     kb.adjust(1)
     return kb.as_markup()
@@ -18,6 +19,7 @@ def get_access_kb():
     kb = InlineKeyboardBuilder()
     kb.button(text='📱 QR-код', callback_data='get_qr')
     kb.button(text='📄 Конфигурационный файл', callback_data=f'get_config')
+    kb.button(text=f'📖 Инструкция подключения', url='https://telegra.ph/Instrukciya-po-podklyucheniyu-VPN-WireGuard-03-23')
     kb.button(text='⬅️ В меню', callback_data='cancel_menu')
     kb.adjust(1)
     return kb.as_markup()

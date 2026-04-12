@@ -10,6 +10,7 @@ from database.db import database
 from services.vpn_service import get_config, generate_qr_image
 from aiogram.types import BufferedInputFile
 import logging
+from states.profile_state import Profile
 
 profile_router = Router()
 
@@ -39,6 +40,28 @@ async def profile(call: CallbackQuery, state: FSMContext):
         f'\n\n📅 Период подписки: {period_subscription}\n\n⏳ Пробный период: {trial}',
         reply_markup=profile_kb(mode_key, subscription_mode))
     await state.update_data(last_msg_id=bot_msg.message_id)
+
+@profile_router.callback_query(F.data == "link_account")
+async def link_account(call: CallbackQuery, state: FSMContext):
+    await call.answer()
+    await safe_delete(call.message)
+    await call.message.answer("📱 Введите номер телефона в формате 79999999999:")
+    await state.set_state(Profile.waiting_for_phone)
+
+@profile_router.message(Profile.waiting_for_phone)
+async def process_phone(message: Message, state: FSMContext):
+    phone = message.text.strip()
+    tg_id = message.from_user.id
+    user_id = database.get_user_by_phone(phone)
+    if not user_id: #если нет номера в бд
+        await message.answer('❌ Пользователь не найден. Попробуйте сначала зарегистрироваться на сайте: ссылка на сайт')
+    else: #если есть номер в бд
+        database.link_tg_id(tg_id, phone)
+        await message.answer('Аккаунт успешно привязан!')
+    await state.clear()
+    bot_msg = await message.answer('Выберите действие 👇:', reply_markup=menu_kb())
+    await state.update_data(last_msg_id=bot_msg.message_id)
+    await state.set_state(Menu.menu)
 
 #получение доступа
 @profile_router.callback_query(F.data == "get_access")
@@ -72,7 +95,7 @@ async def send_qr(call: CallbackQuery, state: FSMContext):
                     caption=f"✅ QR-код \n\n⚠️ Используйте этот код строго на одном устройстве.")
             else:
                 await call.message.answer(f"❌ Конфиг {suffix} не найден. Обратитесь в поддержку.")
-        bot_msg = await call.message.answer('Выберите действие:',reply_markup=menu_kb())
+        bot_msg = await call.message.answer('Выберите действие 👇:',reply_markup=menu_kb())
         await state.update_data(last_msg_id=bot_msg.message_id)
     except Exception as e:
         await call.message.answer("❌ Ошибка при получении доступа. Обратитесь в поддержку")
@@ -96,7 +119,7 @@ async def send_config(call: CallbackQuery, state: FSMContext):
                 file = BufferedInputFile(config.encode(), filename=f"vpn_{suffix}.conf")
                 await call.message.answer_document(file,
                     caption=f"📄 Файл конфигурации \n\n⚠️ Используйте этот файл строго на одном устройстве.")
-        bot_msg = await call.message.answer('Выберите действие:',
+        bot_msg = await call.message.answer('Выберите действие 👇:',
                                             reply_markup=menu_kb())
         await state.update_data(last_msg_id=bot_msg.message_id)
     except Exception as e:
@@ -104,7 +127,6 @@ async def send_config(call: CallbackQuery, state: FSMContext):
         await call.message.answer("❌ Ошибка при загрузке файлов.")
     await state.clear()
     await state.set_state(Menu.menu)
-
 
 @profile_router.message(Payment.access)
 async def access_selection(message: Message, state: FSMContext):
