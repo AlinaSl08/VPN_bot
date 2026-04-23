@@ -56,7 +56,7 @@ async def process_phone(message: Message, state: FSMContext):
     tg_id = message.from_user.id
     user_id = database.get_user_by_phone(phone)
     if not user_id: #если нет номера в бд
-        await message.answer('❌ Пользователь не найден. Попробуйте сначала зарегистрироваться на сайте: ссылка на сайт')
+        await message.answer('❌ Пользователь не найден. Попробуйте сначала зарегистрироваться на сайте: clear-net.ru')
     else: #если есть номер в бд
         database.link_tg_id(tg_id, phone)
         await message.answer('Аккаунт успешно привязан!')

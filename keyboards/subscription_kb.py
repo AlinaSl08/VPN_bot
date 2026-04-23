@@ -29,7 +29,12 @@ def payment_method_kb():
     kb.adjust(1)
     return kb.as_markup()
 
-
+def sub_channel_kb():
+    kb = InlineKeyboardBuilder()
+    kb.button(text="✅ Проверить подписку", callback_data="free_tariff")
+    kb.button(text="⬅️ Назад", callback_data="buy_subscription")
+    kb.adjust(2)
+    return kb.as_markup()
 
 def activate_trial_kb():
     kb = InlineKeyboardBuilder()

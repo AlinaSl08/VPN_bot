@@ -6,7 +6,7 @@ import pandas as pd
 import tempfile
 import time
 
-#load_dotenv('../.env')
+
 load_dotenv()
 PASSWORD = os.getenv("PASSWORD_DB")
 DB_HOST = os.getenv("DB_HOST")
@@ -50,10 +50,8 @@ class Database:
                                         id INT PRIMARY KEY AUTO_INCREMENT,
                                         name VARCHAR(100),
                                         tg_id BIGINT NOT NULL UNIQUE);''')
-            #вынести в отдельную функцию после настройки админки logging.info('Админ успешно добавлен в БД')
             cursor.execute('''INSERT IGNORE INTO admins(name, tg_id)
                                         VALUES ('Алина SAD', 967760347), ('Артем VAV', 1926843289)''')
-
             cursor.execute('''CREATE TABLE IF NOT EXISTS profile(
                             id INT PRIMARY KEY AUTO_INCREMENT,
                             user_id INT NOT NULL,
@@ -67,7 +65,7 @@ class Database:
                             duration_days INT NOT NULL,
                             is_active BOOL DEFAULT TRUE);''')
             cursor.execute('''INSERT IGNORE INTO tariffs(name, price, duration_days)
-                            VALUES ('7 дней', 100, 7), ('30 дней', 150, 30), ('6 месяцев', 540, 183),
+                            VALUES ('7 дней', 100, 7), ('30 дней', 199, 30), ('6 месяцев', 540, 183),
                             ('12 месяцев', 1020, 365);''')
             cursor.execute('''CREATE TABLE IF NOT EXISTS subscriptions(
                             id INT PRIMARY KEY AUTO_INCREMENT,

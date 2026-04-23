@@ -5,7 +5,7 @@ from aiogram.types import LabeledPrice, PreCheckoutQuery
 from utils.delete_last_message import safe_delete, delete_last_message
 from keyboards.menu_kb import menu_kb
 from keyboards.profile_kb import get_access_kb
-from keyboards.subscription_kb import subscription_kb, payment_method_kb, activate_trial_kb
+from keyboards.subscription_kb import subscription_kb, payment_method_kb, activate_trial_kb, sub_channel_kb
 from states.menu_state import Menu
 from states.payment_state import Payment
 import logging
@@ -20,6 +20,7 @@ import time
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from utils.scheduler import schedule_single_subscription
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from utils.check_sub_channel import is_user_subscribed
 
 subscription_router = Router()
 load_dotenv()
@@ -247,13 +248,23 @@ async def success_payment(message: Message, state: FSMContext, scheduler: AsyncI
         await process_subscription_grant(message.from_user.id, days, state, message, scheduler, bot)
 
 @subscription_router.callback_query(F.data == "free_tariff")
-async def free_tariff(call: CallbackQuery, state: FSMContext):
+async def free_tariff(call: CallbackQuery, state: FSMContext, bot: Bot):
     await call.answer()
     await safe_delete(call.message)
-    bot_msg = await call.message.answer('ℹ️ Пробная подписка доступна только один раз.\n\nВы уверены, что хотите прямо сейчас активировать пробную подписку?',
-                                        reply_markup=activate_trial_kb())
-    await state.update_data(last_msg_id=bot_msg.message_id)
-    await state.set_state(Payment.trial)
+    tg_id = call.from_user.id
+    chat_username = "@HClearNetVPN"
+    subscribed_channel = await is_user_subscribed(bot, tg_id, chat_username)  # проверка подписки на канал
+    if subscribed_channel: #если уже подпискан
+        bot_msg = await call.message.answer('ℹ️ Пробная подписка доступна только один раз.\n\nВы уверены, что хотите прямо сейчас активировать пробную подписку?',
+                                            reply_markup=activate_trial_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)
+        await state.set_state(Payment.trial)
+    else: #если еще нет подписки
+        bot_msg = await call.message.answer(
+            f'Для активации пробной подписки необходимо подписаться на следующие каналы 👇:\n\n{chat_username}',
+            reply_markup=sub_channel_kb())
+        await state.update_data(last_msg_id=bot_msg.message_id)
+
 
 @subscription_router.callback_query(F.data == "activate_trial_yes")
 async def activate_trial_yes(call: CallbackQuery, state: FSMContext, scheduler: AsyncIOScheduler, bot: Bot):

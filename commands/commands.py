@@ -1,15 +1,12 @@
 from aiogram import Router, F
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import BotCommand, Message, CallbackQuery
-from utils.delete_last_message import delete_last_message, safe_delete
+from aiogram.types import BotCommand, Message
+from utils.delete_last_message import delete_last_message
 from states.menu_state import Menu
 from keyboards.menu_kb import menu_kb
 from database.db import database
 
-from utils.scheduler import schedule_single_subscription
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from aiogram import Bot
 
 commands_router = Router()
 
