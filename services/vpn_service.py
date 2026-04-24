@@ -23,7 +23,7 @@ def create_vpn_user(username: str, days: int = 1):
     ssh = paramiko.SSHClient() #создаём SSH-клиент
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy()) #выдаем доверие, чтобы не было ошибки
     ssh.connect(IP, port=22, username=USERNAME, password=PASSWORD, look_for_keys=False,
-    allow_agent=False) #подключаемся к серверу
+    allow_agent=False, timeout=10) #подключаемся к серверу
     try:
         logging.info(f"Создаём пользователя {username}...")
         # Добавляем экспорт путей перед запуском скрипта
@@ -65,18 +65,15 @@ def extend_vpn_user(username: str, days: int = 7):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        ssh.connect(IP, port=22, username=USERNAME, password=PASSWORD)
+        ssh.connect(IP, port=22, username=USERNAME, password=PASSWORD, timeout=10)
         logging.info(f"Продлеваем подписку для {username} на {days} дней...")
         command = f"sudo /usr/local/bin/wg-extend.sh {username} {days}"
         stdin, stdout, stderr = ssh.exec_command(command)
-        error = stderr.read().decode()
-        if error:
-            logging.error(f"Ошибка при продлении: {error}")
-            return False
+        output = stdout.read().decode().strip()
+        error = stderr.read().decode().strip()
 
-        #уточнить надо ли это
-        # update_config_cmd = f"pivpn -qr {username} > /root/temp_wg_configs/{username}.conf"
-        # ssh.exec_command(update_config_cmd)
+        logging.info(f"[EXTEND] output={output}")
+        logging.info(f"[EXTEND] error={error}")
 
         logging.info(f"Подписка для {username} успешно продлена")
         return True

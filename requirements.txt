@@ -5,6 +5,6 @@ pandas==2.2.2
 paramiko==3.5.0
 qrcode==7.4.2
 apscheduler==3.10.4
-aiohttp==3.10.10
+aiohttp
 openpyxl
 cryptography

@@ -82,7 +82,7 @@ class Database:
                             name VARCHAR(200) NOT NULL UNIQUE,
                             is_active BOOL DEFAULT TRUE);''')
             cursor.execute('''INSERT IGNORE INTO payments_method(name)
-                            VALUES ('Yoomoney');''')
+                            VALUES ('Юкасса');''')
         self.__conn.commit()
 
     # --ПРОВЕРКА--

@@ -2,8 +2,7 @@ import asyncio
 import logging
 from dotenv import load_dotenv
 import os
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import PreCheckoutQuery
+from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram import Router
 from commands.commands import set_bot_commands
@@ -24,16 +23,6 @@ async def main():
     bot = Bot(token=TOKEN)
     dp = Dispatcher(storage=MemoryStorage())
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(message)s")
-
-    @dp.pre_checkout_query()
-    async def process_pre_checkout_query(pre_checkout_query: PreCheckoutQuery):
-        # Используем print, чтобы точно увидеть в Docker Desktop
-        print(f"!!! ЛОГ: Получен запрос оплаты от {pre_checkout_query.from_user.id}", flush=True)
-        await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
-
-
-
-
     main_router = Router()
     dp.include_router(main_router)
     dp.include_router(subscription_router)
