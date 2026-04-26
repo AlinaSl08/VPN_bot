@@ -118,6 +118,6 @@ def generate_qr_image(config: str):
     qr = qrcode.make(config)
     logging.info('Генерируем QR...')
     buffer = BytesIO()
-    qr.save(buffer, format="PNG")
+    qr.save(buffer)
     buffer.seek(0)
     return buffer
