@@ -352,6 +352,7 @@ async def process_subscription_grant(tg_id: int, days: int, state: FSMContext, e
             for suffix in ["PH", "PC"]:
                 vpn_username = f"{tg_id}_{suffix}"
                 success = await asyncio.to_thread(extend_vpn_user, vpn_username, days=days)
+                await asyncio.sleep(5)
                 if success is False:
                     success_all = False
             if success_all:
@@ -441,6 +442,7 @@ async def activate_trial_yes(call: CallbackQuery, state: FSMContext, scheduler: 
     database.making_subscription(user_id, start_date, end_date, None)
     for suffix in ["PH", "PC"]:  # создаем 2 юзера
         await asyncio.to_thread(create_vpn_user, f"{tg_id}_{suffix}", days=7) #7 дней
+        await asyncio.sleep(5)
     await schedule_single_subscription(scheduler, bot, tg_id, end_date)
     date_str = end_date.strftime("%d.%m.%Y")
     time_str = end_date.strftime("%H:%M")

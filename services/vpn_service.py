@@ -71,10 +71,11 @@ def extend_vpn_user(username: str, days: int = 7):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     try:
-        ssh.connect(IP, port=22, username=USERNAME, password=PASSWORD, timeout=10)
+        ssh.connect(IP, port=22, username=USERNAME, password=PASSWORD, timeout=10, banner_timeout=10)
         logging.info(f"Продлеваем подписку для {username} на {days} дней...")
         command = f"sudo /usr/local/bin/wg-extend {username} {days}"
-        stdin, stdout, stderr = ssh.exec_command(command)
+        stdin, stdout, stderr = ssh.exec_command(command, get_pty=True)
+        exit_status = stdout.channel.recv_exit_status()
         output = stdout.read().decode().strip()
         error = stderr.read().decode().strip()
 
