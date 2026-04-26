@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import qrcode
 from io import BytesIO
 import logging
+from qrcode.image.pil import PilImage
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -118,9 +119,16 @@ def get_qr(username: str):
         ssh.close()
 
 def generate_qr_image(config: str):
-    qr = qrcode.make(config)
     logging.info('Генерируем QR...')
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,)
+    qr.add_data(config)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white", image_factory=PilImage)
     buffer = BytesIO()
-    qr.save(buffer)
+    img.save(buffer, format="PNG")
     buffer.seek(0)
     return buffer
