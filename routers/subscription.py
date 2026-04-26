@@ -335,6 +335,7 @@ async def process_subscription_grant(tg_id: int, days: int, state: FSMContext, e
             await loading_msg.edit_text("🔐 Создаём VPN доступ...")
             for suffix in ["PH", "PC"]:  # создаем 2 юзера
                 await asyncio.to_thread(create_vpn_user, f"{tg_id}_{suffix}", days=days)
+                await asyncio.sleep(5)
             await state.update_data(paid_done=True)
             await schedule_single_subscription(scheduler, bot, tg_id, end_date)
             await loading_msg.edit_text(

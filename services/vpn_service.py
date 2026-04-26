@@ -46,7 +46,7 @@ def create_vpn_user(username: str, days: int = 1):
             raise Exception(f"Ошибка скрипта (код {exit_status}): {error_output  or output}")
         time.sleep(0.5)
 
-        target_path = f"/root/temp_wg_configs/{username}.conf"
+        target_path = f"/var/www/temp_wg_configs/{username}.conf"
         file_created = False
         for i in range(5):
             logging.info(f"Проверка наличия файла {username}.conf (попытка {i + 1})...")
@@ -95,7 +95,7 @@ def get_config(username: str, retries: int = 5):
     try:
         ssh.connect(IP, username=USERNAME, password=PASSWORD, timeout=10)
         logging.info('Ждём создание конфига...')
-        path = f"/root/temp_wg_configs/{username}.conf"
+        path = f"/var/www/temp_wg_configs/{username}.conf"
         #command = f"sudo cat /root/temp_wg_configs/{username}.conf 2>/dev/null"
         for i in range(retries):
             check_cmd = f"test -f {path} && echo 'YES' || echo 'NO'"
