@@ -47,11 +47,16 @@ def create_vpn_user(username: str, days: int = 1):
         time.sleep(0.5)
 
         target_path = f"/root/temp_wg_configs/{username}.conf"
-        check_cmd = f"test -f {target_path} && echo EXISTS || echo NOT_EXISTS"
+        file_created = False
+        for i in range(5):
+            logging.info(f"Проверка наличия файла {username}.conf (попытка {i + 1})...")
+            stdin_c, stdout_c, stderr_c = ssh.exec_command(f"test -f {target_path} && echo EXISTS")
+            if stdout_c.read().decode().strip() == "EXISTS":
+                file_created = True
+                break
+            time.sleep(2)
 
-        stdin_c, stdout_c, stderr_c = ssh.exec_command(check_cmd, get_pty=True)
-        result = stdout_c.read().decode().strip()
-        if result == "EXISTS":
+        if file_created:
             logging.info(f"✅ Файл успешно создан и подтвержден: {target_path}")
             return True
         else:
