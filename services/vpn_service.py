@@ -87,19 +87,22 @@ def extend_vpn_user(username: str, days: int = 7):
 def get_config(username: str, retries: int = 5):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(IP, username=USERNAME, password=PASSWORD)
     try:
+        ssh.connect(IP, username=USERNAME, password=PASSWORD, timeout=10)
         logging.info('Ждём создание конфига...')
-        command = f"sudo cat /root/temp_wg_configs/{username}.conf 2>/dev/null"
+        path = f"/root/temp_wg_configs/{username}.conf"
+        #command = f"sudo cat /root/temp_wg_configs/{username}.conf 2>/dev/null"
         for i in range(retries):
-            stdin, stdout, stderr = ssh.exec_command(command)
-            error = stderr.read().decode()
-            if error:
-                logging.error(f"Ошибка SSH: {error}")
-            config = stdout.read().decode().strip()
-            if config and "Interface" in config:
-                logging.info(f"Конфиг найден на попытке {i + 1}")
-                return config
+            check_cmd = f"test -f {path} && echo 'YES' || echo 'NO'"
+            stdin, stdout, stderr = ssh.exec_command(check_cmd)
+            exists = stdout.read().decode().strip()
+            if exists == 'YES':
+                stdin, stdout, stderr = ssh.exec_command(f"cat {path}")
+                config = stdout.read().decode().strip()
+                if config and "Interface" in config:
+                    logging.info(f"Конфиг найден на попытке {i + 1}")
+                    return config
+
             logging.warning(f"Ожидание файла... попытка {i + 1}")
             time.sleep(5)
         raise Exception("Конфиг не найден после ожидания")
