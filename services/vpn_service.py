@@ -45,7 +45,7 @@ def create_vpn_user(username: str, days: int = 1):
             raise Exception(f"Ошибка скрипта (код {exit_status}): {error_output  or output}")
         time.sleep(0.5)
 
-        target_path = f"/etc/wireguard/configs/{username}.conf"
+        target_path = f"/root/temp_wg_configs/{username}.conf"
         check_cmd = f"test -f {target_path} && echo EXISTS || echo NOT_EXISTS"
 
         stdin_c, stdout_c, stderr_c = ssh.exec_command(check_cmd, get_pty=True)
@@ -67,7 +67,7 @@ def extend_vpn_user(username: str, days: int = 7):
     try:
         ssh.connect(IP, port=22, username=USERNAME, password=PASSWORD, timeout=10)
         logging.info(f"Продлеваем подписку для {username} на {days} дней...")
-        command = f"sudo /usr/local/bin/wg-extend.sh {username} {days}"
+        command = f"sudo /usr/local/bin/wg-extend {username} {days}"
         stdin, stdout, stderr = ssh.exec_command(command)
         output = stdout.read().decode().strip()
         error = stderr.read().decode().strip()
@@ -89,9 +89,12 @@ def get_config(username: str, retries: int = 5):
     ssh.connect(IP, username=USERNAME, password=PASSWORD)
     try:
         logging.info('Ждём создание конфига...')
-        command = f"sudo cat /etc/wireguard/configs/{username}.conf 2>/dev/null"
+        command = f"sudo cat /root/temp_wg_configs/{username}.conf 2>/dev/null"
         for i in range(retries):
             stdin, stdout, stderr = ssh.exec_command(command)
+            error = stderr.read().decode()
+            if error:
+                logging.error(f"Ошибка SSH: {error}")
             config = stdout.read().decode().strip()
             if config and "Interface" in config:
                 logging.info(f"Конфиг найден на попытке {i + 1}")
