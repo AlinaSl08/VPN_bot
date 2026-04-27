@@ -197,7 +197,7 @@ async def payment_method(call: CallbackQuery, state: FSMContext):
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="💳 Оплатить", url=pay_url)],
                 [InlineKeyboardButton(text="✅ Проверить оплату", callback_data="check_yk")],
-                [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_payment")]
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="buy_subscription")]
             ])
             await call.message.answer(
                 f"Счет на оплату тарифа *{data.get('tariff_name')}* готов!\n\n"
@@ -227,7 +227,7 @@ async def payment_method(call: CallbackQuery, state: FSMContext):
                     [InlineKeyboardButton(text="💳 Оплатить (СБП/Карта)", url=pay_url)],
                     [InlineKeyboardButton(text="✅ Проверить оплату", callback_data=f"check_pay_{order_id}")],
                     # Передаем order_id
-                    [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_payment")]
+                    [InlineKeyboardButton(text="❌ Отмена", callback_data="buy_subscription")]
                 ])
                 await call.message.answer(
                     f"Счет на оплату тарифа *{data.get('tariff_name')}* готов!\n\n"
@@ -340,8 +340,7 @@ async def process_subscription_grant(tg_id: int, days: int, state: FSMContext, e
             await schedule_single_subscription(scheduler, bot, tg_id, end_date)
             await loading_msg.edit_text(
                 "🎉 Подписка успешно оформлена!\n\n🔐 Получите доступ к VPN:",
-                reply_markup=get_access_kb()
-            )
+                reply_markup=get_access_kb())
         else:  # если есть активная подписка
             subscription_list = database.get_subscription_date(user_id)
             end_date = subscription_list[0][1] + timedelta(days=days)
@@ -362,9 +361,7 @@ async def process_subscription_grant(tg_id: int, days: int, state: FSMContext, e
                     scheduler,
                     bot,
                     tg_id,
-                    end_date
-                )
-
+                    end_date)
                 await loading_msg.edit_text(
                     "🎉 Подписка успешно продлена!\n\n🔐 Ваш VPN доступ активен:",
                     reply_markup=get_access_kb())
